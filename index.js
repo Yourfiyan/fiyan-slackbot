@@ -9,6 +9,9 @@ const app = new App({
   socketMode: true
 });
 
+let website = "https://news.ycombinator.com/rss";
+let lastThing = "";
+
 
 app.command("/fiyan-ping", async ({ ack, respond }) => {
   const start = Date.now();
@@ -20,7 +23,7 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: "*Available Commands:*\n`/fiyan-ping` - Test bot latency\n`/fiyan-catfact` - Get a random cat fact\n`/fiyan-echo` - Echo a message\n`/fiyan-fakeword` - Get a fake word\n`/fiyan-joke` - Tell a random joke"
+    text: "*Available Commands:*\n`/fiyan-ping` - Test bot latency\n`/fiyan-catfact` - Get a random cat fact\n`/fiyan-echo` - Echo a message\n`/fiyan-fakeword` - Get a fake word\n`/fiyan-joke` - Tell a random joke\n`/fiyan-rss` - Check or set RSS feed"
   });
 });
 
@@ -70,10 +73,48 @@ app.command("/fiyan-joke", async ({ ack, respond }) => {
   try {
     const response = await axios.get("https://official-joke-api.appspot.com/random_joke");
     await respond({
-      text: `*Joke:*\n${response.data.setup}\n\n_${response.data.punchline}_`
+      text: `*Joke:*\n${response.data.setup}\n_${response.data.punchline}_`
     });
   } catch (err) {
     await respond({ text: "Failed to fetch a joke." });
+  }
+});
+
+
+app.command("/fiyan-rss", async ({ ack, respond, command }) => {
+  await ack();
+  const newLink = command.text?.trim();
+  if (newLink) {
+    website = newLink;
+    lastThing = "";
+  }
+
+  try {
+    const res2 = await axios.get(website);
+    const foundItem = res2.data.match(/<(?:item|entry)>([\s\S]*?)<\/(?:item|entry)>/i);
+    if (!foundItem) {
+      await respond({ text: "No posts found in this feed." });
+      return;
+    }
+
+    const stuff = foundItem[1];
+    const rawTitle = stuff.match(/<title>(.*?)<\/title>/i)?.[1] || "Untitled";
+    const postName = rawTitle.replace("<![CDATA[", "").replace("]]>", "").trim();
+    const postUrl = stuff.match(/<link>(.*?)<\/link>/i)?.[1]?.trim() || stuff.match(/href="([^"]+)"/i)?.[1] || "No link found";
+
+    if (postName === lastThing) {
+      await respond({
+        text: `*RSS Status:*\nAll caught up! Latest post: <${postUrl}|${postName}>`
+      });
+      return;
+    }
+
+    lastThing = postName;
+    await respond({
+      text: `*New RSS Update:*\n*Latest Post:* <${postUrl}|${postName}>`
+    });
+  } catch (err) {
+    await respond({ text: "Failed to fetch RSS feed." });
   }
 });
 
