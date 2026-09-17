@@ -60,10 +60,10 @@ app.command("/fiyan-fakeword", async ({ ack, respond }) => {
     }
     const data = JSON.parse(JSON.parse(`"${match[1]}"`));
     const syllables = data.syllables && data.syllables.length > 1
-      ? ` \`[${data.syllables.join(" · ")}]\``
+      ? ` [${data.syllables.join("-")}]`
       : "";
     const cleanExample = data.example ? data.example.replace(/^"|"$/g, "").trim() : "";
-    const exampleBlock = cleanExample ? `\n\n*Example:*\n> _"${cleanExample}"_` : "";
+    const exampleBlock = cleanExample ? `\n*Example:* _"${cleanExample}"_` : "";
 
     await respond({
       text: `*Fake Word:* *${data.word}*${syllables}\n*Part of Speech:* _${data.pos || "unknown"}_\n*Meaning:* ${data.definition}${exampleBlock}`
