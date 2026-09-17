@@ -20,7 +20,7 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: `*Available Commands:*\n• \`/fiyan-ping\` - Test bot latency\n• \`/fiyan-catfact\` - Get a random cat fact\n• \`/fiyan-joke\` - Tell a random joke`
+    text: "*Available Commands:*\n`/fiyan-ping` - Test bot latency\n`/fiyan-catfact` - Get a random cat fact\n`/fiyan-echo` - Echo a message\n`/fiyan-fakeword` - Get a fake word\n`/fiyan-joke` - Tell a random joke"
   });
 });
 
