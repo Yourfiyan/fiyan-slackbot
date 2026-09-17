@@ -35,6 +35,44 @@ app.command("/fiyan-catfact", async ({ ack, respond }) => {
   }
 });
 
+
+app.command("/fiyan-echo", async ({ ack, respond, command }) => {
+  await ack();
+  const text = command.text?.trim();
+  if (!text) {
+    await respond({
+      text: "Usage: `/fiyan-echo [text]`"
+    });
+    return;
+  }
+  await respond({
+    text: text
+  });
+});
+
+app.command("/fiyan-fakeword", async ({ ack, respond }) => {
+  await ack();
+  try {
+    const response = await axios.get("https://www.thisworddoesnotexist.com/");
+    const match = response.data.match(/JSON\.parse\("(\{.*?\})"\)/);
+    if (!match) {
+      throw new Error("Failed to parse fake word");
+    }
+    const data = JSON.parse(JSON.parse(`"${match[1]}"`));
+    const syllables = data.syllables && data.syllables.length > 1
+      ? ` \`[${data.syllables.join(" · ")}]\``
+      : "";
+    const cleanExample = data.example ? data.example.replace(/^"|"$/g, "").trim() : "";
+    const exampleBlock = cleanExample ? `\n\n*Example:*\n> _"${cleanExample}"_` : "";
+
+    await respond({
+      text: `*Fake Word:* *${data.word}*${syllables}\n*Part of Speech:* _${data.pos || "unknown"}_\n*Meaning:* ${data.definition}${exampleBlock}`
+    });
+  } catch (err) {
+    await respond({ text: "Failed to fetch a fake word." });
+  }
+});
+
 app.command("/fiyan-joke", async ({ ack, respond }) => {
   await ack();
   try {
