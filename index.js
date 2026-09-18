@@ -34,6 +34,7 @@ app.command("/fiyan-catfact", async ({ ack, respond }) => {
     const response = await axios.get("https://catfact.ninja/fact");
     await respond({ text: `*Cat Fact:*\n${response.data.fact}` });
   } catch (err) {
+    console.log(err);
     await respond({ text: "Failed to fetch a cat fact." });
   }
 });
@@ -64,6 +65,7 @@ app.command("/fiyan-fakeword", async ({ ack, respond }) => {
       text: `*Fake Word:* *${data.word}*\n*Part of Speech:* _${data.pos}_\n*Meaning:* ${data.definition}${exampleBlock}`
     });
   } catch (err) {
+    console.log(err);
     await respond({ text: "Failed to fetch a fake word." });
   }
 });
@@ -76,6 +78,7 @@ app.command("/fiyan-joke", async ({ ack, respond }) => {
       text: `*Joke:*\n${response.data.setup}\n_${response.data.punchline}_`
     });
   } catch (err) {
+    console.log(err);
     await respond({ text: "Failed to fetch a joke." });
   }
 });
@@ -91,7 +94,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
 
   try {
     const res2 = await axios.get(website);
-    const foundItem = res2.data.match(/<(?:item|entry)>([\s\S]*?)<\/(?:item|entry)>/i);
+    const foundItem = res2.data.match(/<item>([\s\S]*?)<\/item>/i);
     if (!foundItem) {
       await respond({ text: "No posts found in this feed." });
       return;
@@ -100,7 +103,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
     const stuff = foundItem[1];
     const rawTitle = stuff.match(/<title>(.*?)<\/title>/i)?.[1] || "Untitled";
     const postName = rawTitle.replace("<![CDATA[", "").replace("]]>", "").trim();
-    const postUrl = stuff.match(/<link>(.*?)<\/link>/i)?.[1]?.trim() || stuff.match(/href="([^"]+)"/i)?.[1] || "No link found";
+    const postUrl = stuff.match(/<link>(.*?)<\/link>/i)?.[1]?.trim() || "No link found";
 
     if (postName === lastThing) {
       await respond({
@@ -114,6 +117,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       text: `*New RSS Update:*\n*Latest Post:* <${postUrl}|${postName}>`
     });
   } catch (err) {
+    console.log(err);
     await respond({ text: "Failed to fetch RSS feed." });
   }
 });
