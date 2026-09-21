@@ -1,6 +1,8 @@
 require("dotenv").config();
 const { App } = require("@slack/bolt");
 const axios = require("axios");
+const Parser = require("rss-parser");
+const parser = new Parser();
 
 
 const app = new App({
@@ -10,7 +12,7 @@ const app = new App({
 });
 
 let website = "https://news.ycombinator.com/rss";
-let lastThing = "";
+let lastTitle = "";
 
 
 app.command("/fiyan-ping", async ({ ack, respond }) => {
@@ -89,32 +91,30 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
   const newLink = command.text?.trim();
   if (newLink) {
     website = newLink;
-    lastThing = "";
+    lastTitle = "";
   }
 
   try {
-    const res2 = await axios.get(website);
-    const foundItem = res2.data.match(/<item>([\s\S]*?)<\/item>/i);
-    if (!foundItem) {
+    const feed = await parser.parseURL(website);
+    if (!feed.items || feed.items.length === 0) {
       await respond({ text: "No posts found in this feed." });
       return;
     }
 
-    const stuff = foundItem[1];
-    const rawTitle = stuff.match(/<title>(.*?)<\/title>/i)?.[1] || "Untitled";
-    const postName = rawTitle.replace("<![CDATA[", "").replace("]]>", "").trim();
-    const postUrl = stuff.match(/<link>(.*?)<\/link>/i)?.[1]?.trim() || "No link found";
+    const item = feed.items[0];
+    const title = item.title || "Untitled";
+    const link = item.link || "No link found";
 
-    if (postName === lastThing) {
+    if (title === lastTitle) {
       await respond({
-        text: `*RSS Status:*\nAll caught up! Latest post: <${postUrl}|${postName}>`
+        text: `*RSS Status:*\nAll caught up! Latest post: <${link}|${title}>`
       });
       return;
     }
 
-    lastThing = postName;
+    lastTitle = title;
     await respond({
-      text: `*New RSS Update:*\n*Latest Post:* <${postUrl}|${postName}>`
+      text: `*New RSS Update:*\n*Latest Post:* <${link}|${title}>`
     });
   } catch (err) {
     console.log(err);
