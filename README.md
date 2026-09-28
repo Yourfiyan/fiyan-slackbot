@@ -27,4 +27,16 @@ Well anything that has an RSS feed lol.
 3. When something new appears, it remembers it.
 4. Run `/fiyan-rss` in Slack to check for updates.
 
-That's it- Till now
+That's it- 
+Well at least for the main command 
+
+## Rest of the commands are as follows:
+
+```text
+/fiyan-help       - Help Command
+/fiyan-ping       - Test the bot's latency
+/fiyan-catfact    - Get a random cat fact
+/fiyan-echo       - Echo a message
+/fiyan-fakeword   - Get a random fake word
+/fiyan-joke       - Tell a random joke
+```
