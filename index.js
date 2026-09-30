@@ -61,7 +61,7 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: "*Available Commands:*\n`/fiyan-ping` - Test bot latency\n`/fiyan-catfact` - Get a random cat fact\n`/fiyan-echo` - Echo a message\n`/fiyan-fakeword` - Get a fake word\n`/fiyan-joke` - Tell a random joke\n`/fiyan-rss` - Check, add, or remove RSS feeds"
+    text: "*Available Commands:*\n`/fiyan-ping` - Test bot latency\n`/fiyan-catfact` - Get a random cat fact\n`/fiyan-echo` - Echo a message\n`/fiyan-fakeword` - Get a fake word\n`/fiyan-joke` - Tell a random joke\n`/fiyan-advice` - Get random advice\n`/fiyan-coin` - Flip a coin\n`/fiyan-dice` - Roll a dice\n`/fiyan-uselessfact` - Get a useless fact\n`/fiyan-rss` - Check, add, or remove RSS feeds"
   });
 });
 
@@ -118,6 +118,51 @@ app.command("/fiyan-joke", async ({ ack, respond }) => {
   } catch (err) {
     console.log(err);
     await respond({ text: "Failed to fetch a joke." });
+  }
+});
+
+
+app.command("/fiyan-advice", async ({ ack, respond }) => {
+  await ack();
+  try {
+    const response = await axios.get("https://api.adviceslip.com/advice");
+    const advice = response.data?.slip?.advice || "No advice found.";
+    await respond({ text: `*Advice:*\n"${advice}"` });
+  } catch (err) {
+    console.log(err);
+    await respond({ text: "Failed to fetch advice." });
+  }
+});
+
+
+app.command("/fiyan-coin", async ({ ack, respond }) => {
+  await ack();
+  const result = Math.random() < 0.5 ? "Heads" : "Tails";
+  await respond({ text: `*Coin Flip:* *${result}*` });
+});
+
+
+app.command("/fiyan-dice", async ({ ack, respond, command }) => {
+  await ack();
+  const text = command.text?.trim() || "";
+  let sides = parseInt(text, 10);
+  if (isNaN(sides) || sides < 2) {
+    sides = 6;
+  }
+  const roll = Math.floor(Math.random() * sides) + 1;
+  await respond({ text: `*Dice Roll (d${sides}):* *${roll}*` });
+});
+
+
+app.command("/fiyan-uselessfact", async ({ ack, respond }) => {
+  await ack();
+  try {
+    const response = await axios.get("https://uselessfacts.jsph.pl/api/v2/facts/random");
+    const fact = response.data?.text || "No fact found.";
+    await respond({ text: `*Useless Fact:*\n${fact}` });
+  } catch (err) {
+    console.log(err);
+    await respond({ text: "Failed to fetch a useless fact." });
   }
 });
 

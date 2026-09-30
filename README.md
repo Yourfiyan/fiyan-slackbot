@@ -55,4 +55,8 @@ Well at least for the main command
 /fiyan-echo       - Echo a message
 /fiyan-fakeword   - Get a random fake word
 /fiyan-joke       - Tell a random joke
+/fiyan-advice     - Get random advice
+/fiyan-coin       - Flip a coin
+/fiyan-dice       - Roll a dice
+/fiyan-uselessfact - Get a random useless fact
 ```
