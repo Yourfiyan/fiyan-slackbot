@@ -47,7 +47,8 @@ const checkFeeds = async () => {
   }
 };
 
-setInterval(checkFeeds, 60000);
+let checkInterval = 60000;
+setInterval(checkFeeds, checkInterval);
 
 
 app.command("/fiyan-ping", async ({ ack, respond }) => {
