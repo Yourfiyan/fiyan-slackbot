@@ -21,35 +21,50 @@ const checkFeeds = async () => {
         continue;
       }
 
-      const item = data.items[0];
-      const title = item.title || "Untitled";
-      const link = item.link || "No link found";
-
       if (!feed.title && data.title) {
         feed.title = data.title;
         saveFeeds(feeds);
       }
 
       if (!feed.lastTitle) {
-        feed.lastTitle = title;
+        feed.lastTitle = data.items[0].title || "";
         saveFeeds(feeds);
         continue;
       }
 
-      if (title !== feed.lastTitle) {
-        feed.lastTitle = title;
+      const newItems = [];
+      for (const item of data.items) {
+        const itemTitle = item.title || "Untitled";
+        if (itemTitle === feed.lastTitle) {
+          break;
+        }
+        newItems.push(item);
+        if (newItems.length >= 3) {
+          break;
+        }
+      }
+
+      if (newItems.length > 0) {
+        feed.lastTitle = data.items[0].title || "Untitled";
         saveFeeds(feeds);
+
         const targetChannel = feed.channelId || process.env.SLACK_CHANNEL_ID;
         if (targetChannel) {
           const feedName = feed.title ? `*${feed.title}*` : `<${feed.url}>`;
-          await app.client.chat.postMessage({
-            channel: targetChannel,
-            text: `:party_parrot: *New RSS Update from ${feedName}:*\n:newspaper: <${link}|${title}>`
-          });
+          for (const item of newItems.reverse()) {
+            const title = item.title || "Untitled";
+            const link = item.link || feed.url;
+            const snippet = item.contentSnippet ? `\n>${item.contentSnippet.slice(0, 140).replace(/\n/g, " ")}...` : "";
+
+            await app.client.chat.postMessage({
+              channel: targetChannel,
+              text: `:party_parrot: *New post from ${feedName}:*\n:newspaper: <${link}|${title}>${snippet}`
+            });
+          }
         }
       }
     } catch (err) {
-      console.error(`Error checking feed ${feed.url}:`, err.message || err);
+      console.error(`Feed check error for ${feed.url}:`, err.message || err);
     }
   }
 };
@@ -75,19 +90,109 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: "*:blob-wave: Available Commands:* :party_parrot:\n" +
-      ":zap: `/fiyan-ping` - Test bot latency\n" +
-      ":newspaper: `/fiyan-rss` - View, add, or remove RSS feeds\n" +
-      ":popcat: `/fiyan-meme` - Grab a Reddit meme\n" +
-      ":game_die: `/fiyan-dice [count]d[sides]` - Roll dice (e.g. `2d6`, `d20`)\n" +
-      ":coin: `/fiyan-coin` - Flip a coin\n" +
-      ":mega: `/fiyan-echo [text]` - Echo text (try `yell` or `reverse`)\n" +
-      ":catjam: `/fiyan-catfact` - Get a cat fact\n" +
-      ":pepe-laugh: `/fiyan-joke` - Tell a random joke\n" +
-      ":bulb: `/fiyan-advice` - Get random advice\n" +
-      ":book: `/fiyan-fakeword` - Get a made-up word\n" +
-      ":sparkles: `/fiyan-uselessfact` - Get a useless fact"
+    text: "*:blob-wave: Knowfiyan Commands:* :party_parrot:\n\n" +
+      "*📰 RSS Reader:*\n" +
+      "• `/fiyan-rss` - View all watched feeds\n" +
+      "• `/fiyan-rss <url>` - Add a feed to watch\n" +
+      "• `/fiyan-rss read <number>` - Read top 3 stories from a feed\n" +
+      "• `/fiyan-rss remove <number>` - Remove a feed\n" +
+      "• `/fiyan-rss check` - Check for new posts right now\n" +
+      "• `/fiyan-rss hackernews` - Quick-add Hacker News\n" +
+      "• `/fiyan-rss hackclub` - Quick-add Hack Club Scrapbook\n\n" +
+      "*🛠️ Hacker Utilities:*\n" +
+      "• `/fiyan-github <owner/repo>` - Check live GitHub repo stats\n" +
+      "• `/fiyan-poll \"Question\" \"Opt1\" \"Opt2\"` - Start an in-channel poll\n" +
+      "• `/fiyan-dice [count]d[sides]` - Roll tabletop dice (e.g. `2d6`, `d20`)\n" +
+      "• `/fiyan-coin` - Flip a coin with commentary\n" +
+      "• `/fiyan-echo [text]` - Echo text (try `yell` or `reverse`)\n" +
+      "• `/fiyan-ping` - Test bot latency\n\n" +
+      "*🎮 Fun & Jokes:*\n" +
+      "• `/fiyan-meme` - Grab a safe Reddit meme\n" +
+      "• `/fiyan-joke` - Programmer & dev jokes\n" +
+      "• `/fiyan-catfact` - Random cat fact\n" +
+      "• `/fiyan-advice` - Random advice\n" +
+      "• `/fiyan-fakeword` - Made-up word\n" +
+      "• `/fiyan-uselessfact` - Random useless fact"
   });
+});
+
+
+app.command("/fiyan-github", async ({ ack, respond, command }) => {
+  await ack();
+  const repo = command.text?.trim();
+  if (!repo) {
+    await respond({
+      text: ":warning: Usage: `/fiyan-github <owner/repo>` (e.g. `/fiyan-github hackclub/hackclub`)"
+    });
+    return;
+  }
+
+  try {
+    const res = await axios.get(`https://api.github.com/repos/${repo}`, {
+      headers: { "User-Agent": "Knowfiyan-SlackBot" }
+    });
+    const d = res.data;
+    const stars = d.stargazers_count?.toLocaleString() || 0;
+    const forks = d.forks_count?.toLocaleString() || 0;
+    const lang = d.language || "Plain text";
+    const desc = d.description || "No description provided.";
+
+    await respond({
+      text: `:octocat: *<${d.html_url}|${d.full_name}>*\n` +
+        `>${desc}\n\n` +
+        `:star: *${stars}* stars | :fork_and_knife: *${forks}* forks | :computer: *${lang}*`
+    });
+  } catch (err) {
+    console.error("github error:", err.message || err);
+    await respond({
+      text: `:x: Couldn't find GitHub repo \`${repo}\`. Make sure it's in the format \`owner/repo\` and is public!`
+    });
+  }
+});
+
+
+app.command("/fiyan-poll", async ({ ack, respond, command }) => {
+  await ack();
+  const raw = command.text?.trim() || "";
+  const matches = raw.match(/"([^"]+)"|'([^']+)'|(\S+)/g);
+  if (!matches || matches.length < 3) {
+    await respond({
+      text: ":warning: Usage: `/fiyan-poll \"Question\" \"Option 1\" \"Option 2\" ...`"
+    });
+    return;
+  }
+
+  const clean = matches.map((m) => m.replace(/^["']|["']$/g, ""));
+  const question = clean[0];
+  const options = clean.slice(1, 10);
+  const numberEmojis = [":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:"];
+
+  const optionsText = options.map((opt, i) => `${numberEmojis[i]} ${opt}`).join("\n");
+  await respond({
+    response_type: "in_channel",
+    text: `:bar_chart: *Poll:* *${question}*\n\n${optionsText}\n\n_React with numbers to vote!_ :party_parrot:`
+  });
+});
+
+
+app.command("/fiyan-joke", async ({ ack, respond }) => {
+  await ack();
+  try {
+    const res = await axios.get("https://v2.jokeapi.dev/joke/Programming,Miscellaneous?blacklistFlags=nsfw,religious,political,racist,sexist");
+    const data = res.data;
+    if (data.type === "twopart") {
+      await respond({
+        text: `:pepe-laugh: *Joke:*\n${data.setup}\n_${data.delivery}_`
+      });
+    } else {
+      await respond({
+        text: `:pepe-laugh: *Joke:*\n${data.joke}`
+      });
+    }
+  } catch (err) {
+    console.error("joke error:", err.message || err);
+    await respond({ text: ":zipper_mouth_face: The joke API went quiet. Try again in a second!" });
+  }
 });
 
 
@@ -140,20 +245,6 @@ app.command("/fiyan-fakeword", async ({ ack, respond }) => {
   } catch (err) {
     console.error("fakeword error:", err.message || err);
     await respond({ text: ":books: The dictionary is speechless right now. Try again in a bit!" });
-  }
-});
-
-
-app.command("/fiyan-joke", async ({ ack, respond }) => {
-  await ack();
-  try {
-    const response = await axios.get("https://official-joke-api.appspot.com/random_joke");
-    await respond({
-      text: `:pepe-laugh: *Joke:*\n${response.data.setup}\n_${response.data.punchline}_`
-    });
-  } catch (err) {
-    console.error("joke error:", err.message || err);
-    await respond({ text: ":zipper_mouth_face: The joke API went quiet. Try again in a second!" });
   }
 });
 
@@ -282,12 +373,64 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       .join("\n");
 
     await respond({
-      text: `:newspaper: *Your Watched Feeds (${feeds.length}):* :satellite:\n${feedList}\n\n_Tip: Use \`/fiyan-rss remove <number>\` to delete, or \`/fiyan-rss check\` to refresh now._`
+      text: `:newspaper: *Your Watched Feeds (${feeds.length}):* :satellite:\n${feedList}\n\n_Tip: Use \`/fiyan-rss read <number>\` to read top stories, \`/fiyan-rss remove <number>\` to delete, or \`/fiyan-rss check\` to refresh now._`
     });
     return;
   }
 
-  // 2. Remove feed (by index or url)
+  // 2. Read latest posts on-demand
+  if (action === "read" || action === "latest") {
+    const target = parts[1] || "1";
+    let targetUrl = presets[target.toLowerCase()] || "";
+    let displayName = target;
+
+    if (!targetUrl) {
+      const num = parseInt(target, 10);
+      if (!isNaN(num) && num >= 1 && num <= feeds.length) {
+        targetUrl = feeds[num - 1].url;
+        displayName = feeds[num - 1].title || feeds[num - 1].url;
+      } else {
+        const found = feeds.find((f) => f.url.toLowerCase() === target.toLowerCase());
+        if (found) {
+          targetUrl = found.url;
+          displayName = found.title || found.url;
+        }
+      }
+    }
+
+    if (!targetUrl) {
+      await respond({
+        text: `:warning: Couldn't find feed "${target}". Use \`/fiyan-rss list\` to see your feed numbers, or try \`/fiyan-rss read hackernews\`!`
+      });
+      return;
+    }
+
+    try {
+      const data = await parser.parseURL(targetUrl);
+      const items = (data.items || []).slice(0, 3);
+      if (items.length === 0) {
+        await respond({ text: `:satellite: No articles found in *${displayName}*.` });
+        return;
+      }
+
+      const articles = items.map((it, idx) => {
+        const t = it.title || "Untitled";
+        const l = it.link || targetUrl;
+        const snip = it.contentSnippet ? `\n>${it.contentSnippet.slice(0, 120).replace(/\n/g, " ")}...` : "";
+        return `*${idx + 1}.* <${l}|${t}>${snip}`;
+      }).join("\n\n");
+
+      await respond({
+        text: `:newspaper: *Latest stories from ${data.title || displayName}:*\n\n${articles}`
+      });
+    } catch (err) {
+      console.error(`Read error for ${targetUrl}:`, err.message || err);
+      await respond({ text: `:x: Failed to read feed *${displayName}*.` });
+    }
+    return;
+  }
+
+  // 3. Remove feed (by index or url)
   if (action === "remove" || action === "delete") {
     const target = parts[1];
     if (!target) {
@@ -314,7 +457,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
     return;
   }
 
-  // 3. Manual check / refresh
+  // 4. Manual check / refresh
   if (action === "check" || action === "refresh") {
     if (feeds.length === 0) {
       await respond({ text: ":newspaper: No RSS feeds to check. Add one with `/fiyan-rss <url>`." });
@@ -351,7 +494,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
     return;
   }
 
-  // 4. Add feed (URL or preset)
+  // 5. Add feed (URL or preset)
   let feedUrl = presets[action] || "";
   if (!feedUrl) {
     const matchUrl = rawInput.match(/https?:\/\/[^\s>|]+/i);
@@ -368,7 +511,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
     }
 
     await respond({
-      text: ":warning: Please provide a valid RSS URL or preset.\n\n*Usage:*\n• `/fiyan-rss` - View watched feeds\n• `/fiyan-rss <url>` - Add a feed\n• `/fiyan-rss remove <number>` - Remove a feed\n• `/fiyan-rss check` - Check feeds now\n• `/fiyan-rss hackernews` - Quick-add Hacker News"
+      text: ":warning: Please provide a valid RSS URL or preset.\n\n*Usage:*\n• `/fiyan-rss` - View watched feeds\n• `/fiyan-rss <url>` - Add a feed\n• `/fiyan-rss read <number>` - Read top 3 stories\n• `/fiyan-rss remove <number>` - Remove a feed\n• `/fiyan-rss check` - Check feeds now\n• `/fiyan-rss hackernews` - Quick-add Hacker News"
     });
     return;
   }
