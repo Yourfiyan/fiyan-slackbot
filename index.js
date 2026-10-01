@@ -3,6 +3,7 @@ const { App } = require("@slack/bolt");
 const axios = require("axios");
 const Parser = require("rss-parser");
 const parser = new Parser();
+const { loadFeeds, saveFeeds } = require("./storage");
 
 
 const app = new App({
@@ -11,7 +12,7 @@ const app = new App({
   socketMode: true
 });
 
-let feeds = [];
+let feeds = loadFeeds();
 let lastChannelId = "";
 
 const checkFeeds = async () => {
@@ -28,11 +29,13 @@ const checkFeeds = async () => {
 
       if (!feed.lastTitle) {
         feed.lastTitle = title;
+        saveFeeds(feeds);
         continue;
       }
 
       if (title !== feed.lastTitle) {
         feed.lastTitle = title;
+        saveFeeds(feeds);
         const targetChannel = feed.channelId || lastChannelId || process.env.SLACK_CHANNEL_ID;
         if (targetChannel) {
           await app.client.chat.postMessage({
@@ -188,6 +191,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
     const existingIndex = feeds.findIndex((f) => f.url === newLink);
     if (existingIndex !== -1) {
       feeds.splice(existingIndex, 1);
+      saveFeeds(feeds);
       await respond({
         text: `Removed RSS feed: <${newLink}>`
       });
@@ -200,6 +204,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       channelId: command.channel_id || ""
     };
     feeds.push(feed);
+    saveFeeds(feeds);
 
     try {
       const data = await parser.parseURL(newLink);
@@ -215,6 +220,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       const link = item.link || "No link found";
 
       feed.lastTitle = title;
+      saveFeeds(feeds);
       await respond({
         text: `*Added RSS Feed:*\n*Latest Post:* <${link}|${title}>`
       });
@@ -236,8 +242,9 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
 
   const results = [];
   for (const feed of feeds) {
-    if (command.channel_id) {
+    if (command.channel_id && feed.channelId !== command.channel_id) {
       feed.channelId = command.channel_id;
+      saveFeeds(feeds);
     }
 
     try {
@@ -255,6 +262,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
         results.push(`*Feed:* <${feed.url}>\n*RSS Status:* All caught up! Latest post: <${link}|${title}>`);
       } else {
         feed.lastTitle = title;
+        saveFeeds(feeds);
         results.push(`*Feed:* <${feed.url}>\n*New RSS Update:* <${link}|${title}>`);
       }
     } catch (err) {
