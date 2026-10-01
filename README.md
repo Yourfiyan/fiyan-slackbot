@@ -1,62 +1,56 @@
-# Knowfiyan 
+# Knowfiyan 🤖
 
-Knowfiyan is a simple Slack bot that keeps an eye on an RSS feed for you.
+Knowfiyan is a Slack bot that monitors RSS feeds for you and brings updates right into your Slack channels, with persistent storage so your feeds never get lost.
 
-When the feed gets updated, you can use:
+## Features & Commands
 
-```text
-/fiyan-rss
-```
+### 📰 RSS Feed Monitor
+* `/fiyan-rss` - Check status of all watched RSS feeds manually.
+* `/fiyan-rss <url>` - Add a new RSS feed to watch (or remove an existing one).
+* **Persistent Storage**: All feeds and latest posts are automatically saved to `feeds.json` so your feeds stay saved even if the bot restarts!
+* **Auto Updates**: By default, the bot checks all feeds in the background every 60 seconds and notifies your channel when a new post drops.
 
-to check for new updates. By default, the bot will check the feed every 60 seconds. You can change this by modifying the `checkInterval` variable in the code.
-
-Use 
-
-```text
-/fiyan-rss <new url>
-```
-
-to add a new RSS feed.
-
-Use
-
-```text
-/fiyan-rss <existing url>
-```
-
-to remove an RSS feed.
+### 🎮 Fun & Utility Commands
+* 🏓 `/fiyan-ping` - Test the bot's latency
+* 🐱 `/fiyan-catfact` - Get a random cat fact
+* 📢 `/fiyan-echo <text>` - Echo a message
+* 📖 `/fiyan-fakeword` - Get an AI-generated fake word with definition
+* 😂 `/fiyan-joke` - Tell a random joke
+* 💡 `/fiyan-advice` - Get a piece of random advice
+* 🪙 `/fiyan-coin` - Flip a coin (Heads or Tails)
+* 🎲 `/fiyan-dice [sides]` - Roll a dice (default 6-sided, or custom)
+* 🧠 `/fiyan-uselessfact` - Get a random useless fact
+* 🐸 `/fiyan-meme` - Grab a safe meme from Reddit
+* 🤖 `/fiyan-help` - Show all commands in Slack
 
 ## What can you use it for?
+Anything with an RSS feed!
+* Tech blogs & news (e.g. Hacker News `https://hnrss.org/frontpage`)
+* Gaming news & releases
+* Subreddit RSS feeds (`https://www.reddit.com/r/hackclub/.rss`)
+* Personal developer blogs
 
-Well anything that has an RSS feed lol.
+## Setup & Running Locally
 
-*  News websites
-*  Tech blogs
-*  Gaming news
-*  Blog updates
-*  Any other RSS feed
+1. Clone this repo:
+   ```bash
+   git clone https://github.com/Yourfiyan/fiyan-slackbot.git
+   cd fiyan-slackbot
+   ```
 
-## How it works
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-1. Add an RSS feed to Knowfiyan.
-2. Knowfiyan keeps checking it.
-3. When something new appears, it remembers it.
-4. Run `/fiyan-rss` in Slack to check for updates manually.
+3. Create a `.env` file (see `.env.example`):
+   ```env
+   SLACK_BOT_TOKEN=xoxb-...
+   SLACK_APP_TOKEN=xapp-...
+   SLACK_CHANNEL_ID=C...
+   ```
 
-That's it- 
-Well at least for the main command 
-
-## Rest of the commands are as follows:
-
-```text
-/fiyan-help       - Help Command
-/fiyan-ping       - Test the bot's latency
-/fiyan-catfact    - Get a random cat fact
-/fiyan-echo       - Echo a message
-/fiyan-fakeword   - Get a random fake word
-/fiyan-joke       - Tell a random joke
-/fiyan-advice     - Get random advice
-/fiyan-coin       - Flip a coin
-/fiyan-dice       - Roll a dice
-/fiyan-uselessfact - Get a random useless fact
-```
+4. Start the bot:
+   ```bash
+   npm start
+   ```
