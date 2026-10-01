@@ -5,7 +5,6 @@ const Parser = require("rss-parser");
 const parser = new Parser();
 const { loadFeeds, saveFeeds } = require("./storage");
 
-
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   appToken: process.env.SLACK_APP_TOKEN,
@@ -13,7 +12,6 @@ const app = new App({
 });
 
 let feeds = loadFeeds();
-let lastChannelId = "";
 
 const checkFeeds = async () => {
   for (const feed of feeds) {
@@ -27,6 +25,11 @@ const checkFeeds = async () => {
       const title = item.title || "Untitled";
       const link = item.link || "No link found";
 
+      if (!feed.title && data.title) {
+        feed.title = data.title;
+        saveFeeds(feeds);
+      }
+
       if (!feed.lastTitle) {
         feed.lastTitle = title;
         saveFeeds(feeds);
@@ -36,16 +39,17 @@ const checkFeeds = async () => {
       if (title !== feed.lastTitle) {
         feed.lastTitle = title;
         saveFeeds(feeds);
-        const targetChannel = feed.channelId || lastChannelId || process.env.SLACK_CHANNEL_ID;
+        const targetChannel = feed.channelId || process.env.SLACK_CHANNEL_ID;
         if (targetChannel) {
+          const feedName = feed.title ? `*${feed.title}*` : `<${feed.url}>`;
           await app.client.chat.postMessage({
             channel: targetChannel,
-            text: `📢 *New RSS Update:*\n📡 *Feed:* <${feed.url}>\n📰 *Latest Post:* <${link}|${title}>`
+            text: `📢 *New RSS Update from ${feedName}:*\n📰 <${link}|${title}>`
           });
         }
       }
     } catch (err) {
-      console.log(err);
+      console.error(`Error checking feed ${feed.url}:`, err.message || err);
     }
   }
 };
@@ -58,13 +62,20 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
   const start = Date.now();
   await ack();
   const latency = Date.now() - start;
-  await respond({ text: `🏓 *Pong!*\n⏱️ Latency: ${latency}ms` });
+  let comment = "⚡ Blazing fast!";
+  if (latency > 250) {
+    comment = "🐢 Running a little slow today.";
+  } else if (latency > 100) {
+    comment = "✨ Pretty decent!";
+  }
+  await respond({ text: `🏓 *Pong!*\n⏱️ Latency: ${latency}ms — _${comment}_` });
 });
+
 
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: "*🤖 Available Commands:*\n🏓 `/fiyan-ping` - Test bot latency\n🐱 `/fiyan-catfact` - Get a random cat fact\n📢 `/fiyan-echo` - Echo a message\n📖 `/fiyan-fakeword` - Get a fake word\n😂 `/fiyan-joke` - Tell a random joke\n💡 `/fiyan-advice` - Get random advice\n🪙 `/fiyan-coin` - Flip a coin\n🎲 `/fiyan-dice` - Roll a dice\n🧠 `/fiyan-uselessfact` - Get a useless fact\n🐸 `/fiyan-meme` - Get a random meme\n📰 `/fiyan-rss` - Check, add, or remove RSS feeds"
+    text: "*🤖 Available Commands:*\n🏓 `/fiyan-ping` - Test bot latency\n📰 `/fiyan-rss` - View, add, or remove RSS feeds\n🐸 `/fiyan-meme` - Grab a safe Reddit meme\n🎲 `/fiyan-dice [count]d[sides]` - Roll dice (e.g. `2d6`, `d20`)\n🪙 `/fiyan-coin` - Flip a coin with commentary\n📢 `/fiyan-echo [text]` - Echo text (try `yell` or `reverse`)\n🐱 `/fiyan-catfact` - Get a cat fact\n😂 `/fiyan-joke` - Tell a random joke\n💡 `/fiyan-advice` - Get random advice\n📖 `/fiyan-fakeword` - Get a made-up word\n🧠 `/fiyan-uselessfact` - Get a useless fact"
   });
 });
 
@@ -75,8 +86,8 @@ app.command("/fiyan-catfact", async ({ ack, respond }) => {
     const response = await axios.get("https://catfact.ninja/fact");
     await respond({ text: `🐱 *Cat Fact:*\n${response.data.fact}` });
   } catch (err) {
-    console.log(err);
-    await respond({ text: "❌ Failed to fetch a cat fact." });
+    console.error("catfact error:", err.message || err);
+    await respond({ text: "😿 Couldn't fetch a cat fact right now. The cat must be sleeping!" });
   }
 });
 
@@ -86,14 +97,24 @@ app.command("/fiyan-echo", async ({ ack, respond, command }) => {
   const text = command.text?.trim();
   if (!text) {
     await respond({
-      text: "⚠️ Usage: `/fiyan-echo [text]`"
+      text: "⚠️ Usage: `/fiyan-echo [text]` (or try `/fiyan-echo yell [text]` or `/fiyan-echo reverse [text]`)"
     });
     return;
   }
-  await respond({
-    text: `📢 ${text}`
-  });
+
+  if (text.startsWith("yell ")) {
+    await respond({ text: `📢 *${text.slice(5).toUpperCase()}!!!*` });
+    return;
+  }
+  if (text.startsWith("reverse ")) {
+    const rev = text.slice(8).split("").reverse().join("");
+    await respond({ text: `🔄 ${rev}` });
+    return;
+  }
+
+  await respond({ text: `📢 ${text}` });
 });
+
 
 app.command("/fiyan-fakeword", async ({ ack, respond }) => {
   await ack();
@@ -106,10 +127,11 @@ app.command("/fiyan-fakeword", async ({ ack, respond }) => {
       text: `📖 *Fake Word:* *${data.word}*\n*Part of Speech:* _${data.pos}_\n*Meaning:* ${data.definition}${exampleBlock}`
     });
   } catch (err) {
-    console.log(err);
-    await respond({ text: "❌ Failed to fetch a fake word." });
+    console.error("fakeword error:", err.message || err);
+    await respond({ text: "📚 The dictionary is speechless right now. Try again in a bit!" });
   }
 });
+
 
 app.command("/fiyan-joke", async ({ ack, respond }) => {
   await ack();
@@ -119,8 +141,8 @@ app.command("/fiyan-joke", async ({ ack, respond }) => {
       text: `😂 *Joke:*\n${response.data.setup}\n_${response.data.punchline}_`
     });
   } catch (err) {
-    console.log(err);
-    await respond({ text: "❌ Failed to fetch a joke." });
+    console.error("joke error:", err.message || err);
+    await respond({ text: "🤐 The joke API went quiet. Try again in a second!" });
   }
 });
 
@@ -132,28 +154,61 @@ app.command("/fiyan-advice", async ({ ack, respond }) => {
     const advice = response.data?.slip?.advice || "No advice found.";
     await respond({ text: `💡 *Advice:*\n"${advice}"` });
   } catch (err) {
-    console.log(err);
-    await respond({ text: "❌ Failed to fetch advice." });
+    console.error("advice error:", err.message || err);
+    await respond({ text: "🤔 No advice right now, you're on your own for this one!" });
   }
 });
 
 
 app.command("/fiyan-coin", async ({ ack, respond }) => {
   await ack();
-  const result = Math.random() < 0.5 ? "Heads" : "Tails";
-  await respond({ text: `🪙 *Coin Flip:* *${result}*` });
+  const isHeads = Math.random() < 0.5;
+  const result = isHeads ? "Heads" : "Tails";
+  const quips = isHeads
+    ? ["Heads never fails!", "Clean flip!", "Heads it is!"]
+    : ["Tails never fails!", "Landed on Tails!", "Tails!"];
+  const quip = quips[Math.floor(Math.random() * quips.length)];
+  await respond({ text: `🪙 *Coin Flip:* *${result}* — _${quip}_` });
 });
 
 
 app.command("/fiyan-dice", async ({ ack, respond, command }) => {
   await ack();
-  const text = command.text?.trim() || "";
-  let sides = parseInt(text, 10);
-  if (isNaN(sides) || sides < 2) {
-    sides = 6;
+  const text = command.text?.trim().toLowerCase() || "d6";
+  const match = text.match(/^(\d+)?d?(\d+)$/i);
+
+  let count = 1;
+  let sides = 6;
+
+  if (match) {
+    count = match[1] ? parseInt(match[1], 10) : 1;
+    sides = parseInt(match[2], 10);
   }
-  const roll = Math.floor(Math.random() * sides) + 1;
-  await respond({ text: `🎲 *Dice Roll (d${sides}):* *${roll}*` });
+
+  if (count < 1 || count > 20) {
+    await respond({ text: "⚠️ You can only roll between 1 and 20 dice at a time!" });
+    return;
+  }
+  if (sides < 2 || sides > 1000) {
+    await respond({ text: "⚠️ Dice must have between 2 and 1000 sides!" });
+    return;
+  }
+
+  const rolls = [];
+  let total = 0;
+  for (let i = 0; i < count; i++) {
+    const roll = Math.floor(Math.random() * sides) + 1;
+    rolls.push(roll);
+    total += roll;
+  }
+
+  if (count === 1) {
+    await respond({ text: `🎲 *Dice Roll (d${sides}):* *${rolls[0]}*` });
+  } else {
+    await respond({
+      text: `🎲 *Dice Roll (${count}d${sides}):* [${rolls.join(", ")}] = *${total}*`
+    });
+  }
 });
 
 
@@ -164,8 +219,8 @@ app.command("/fiyan-uselessfact", async ({ ack, respond }) => {
     const fact = response.data?.text || "No fact found.";
     await respond({ text: `🧠 *Useless Fact:*\n${fact}` });
   } catch (err) {
-    console.log(err);
-    await respond({ text: "❌ Failed to fetch a useless fact." });
+    console.error("uselessfact error:", err.message || err);
+    await respond({ text: "🤯 Ran out of useless facts for a second!" });
   }
 });
 
@@ -183,115 +238,172 @@ app.command("/fiyan-meme", async ({ ack, respond }) => {
       text: `🐸 *${data.title}* _(r/${data.subreddit})_\n${data.url}`
     });
   } catch (err) {
-    console.log(err);
-    await respond({ text: "❌ Failed to fetch a meme." });
+    console.error("meme error:", err.message || err);
+    await respond({ text: "❌ Failed to fetch a meme right now. Try again later!" });
   }
 });
 
 
 app.command("/fiyan-rss", async ({ ack, respond, command }) => {
   await ack();
-  if (command.channel_id) {
-    lastChannelId = command.channel_id;
-  }
 
   const rawInput = command.text?.trim() || "";
-  const matchUrl = rawInput.match(/https?:\/\/[^\s>|]+/i);
-  const newLink = matchUrl ? matchUrl[0] : "";
+  const parts = rawInput.split(/\s+/);
+  const action = parts[0]?.toLowerCase();
 
-  if (rawInput && !newLink) {
-    await respond({
-      text: "⚠️ Please provide a valid RSS URL.\nUsage: `/fiyan-rss [url]` to add or remove a feed, or `/fiyan-rss` to check status."
-    });
-    return;
-  }
+  const presets = {
+    hackclub: "https://scrapbook.hackclub.com/feed.xml",
+    hackernews: "https://hnrss.org/frontpage",
+    github: "https://github.blog/feed/"
+  };
 
-  if (newLink) {
-    const existingIndex = feeds.findIndex((f) => f.url === newLink);
-    if (existingIndex !== -1) {
-      feeds.splice(existingIndex, 1);
-      saveFeeds(feeds);
+  // 1. List feeds
+  if (!rawInput || action === "list") {
+    if (feeds.length === 0) {
       await respond({
-        text: `🗑️ Removed RSS feed: <${newLink}>`
+        text: "📰 *RSS Status:*\nNo RSS feeds are being watched yet.\n\nUse `/fiyan-rss <url>` to add one, or try `/fiyan-rss hackernews`!"
       });
       return;
     }
 
-    const feed = {
-      url: newLink,
-      lastTitle: "",
-      channelId: command.channel_id || ""
-    };
-    feeds.push(feed);
-    saveFeeds(feeds);
+    const feedList = feeds
+      .map((f, i) => `${i + 1}. *${f.title || "Feed"}* - <${f.url}>`)
+      .join("\n");
 
-    try {
-      const data = await parser.parseURL(newLink);
-      if (!data.items || data.items.length === 0) {
-        await respond({
-          text: `📰 Added RSS feed: <${newLink}>\nNo posts found in this feed yet.`
-        });
-        return;
-      }
-
-      const item = data.items[0];
-      const title = item.title || "Untitled";
-      const link = item.link || "No link found";
-
-      feed.lastTitle = title;
-      saveFeeds(feeds);
-      await respond({
-        text: `📰 *Added RSS Feed:*\n*Latest Post:* <${link}|${title}>`
-      });
-    } catch (err) {
-      console.log(err);
-      await respond({
-        text: `⚠️ Added <${newLink}>, but couldn't fetch latest post right now.`
-      });
-    }
-    return;
-  }
-
-  if (feeds.length === 0) {
     await respond({
-      text: "📰 *RSS Status:*\nNo RSS feeds are being watched. Use `/fiyan-rss [url]` to add one."
+      text: `📰 *Your Watched Feeds (${feeds.length}):*\n${feedList}\n\n_Tip: Use \`/fiyan-rss remove <number>\` to delete, or \`/fiyan-rss check\` to refresh now._`
     });
     return;
   }
 
-  const results = [];
-  for (const feed of feeds) {
-    if (command.channel_id && feed.channelId !== command.channel_id) {
-      feed.channelId = command.channel_id;
-      saveFeeds(feeds);
+  // 2. Remove feed (by index or url)
+  if (action === "remove" || action === "delete") {
+    const target = parts[1];
+    if (!target) {
+      await respond({ text: "⚠️ Usage: `/fiyan-rss remove <number or url>`" });
+      return;
     }
 
-    try {
-      const data = await parser.parseURL(feed.url);
-      if (!data.items || data.items.length === 0) {
-        results.push(`📡 *Feed:* <${feed.url}>\nNo posts found.`);
-        continue;
-      }
-
-      const item = data.items[0];
-      const title = item.title || "Untitled";
-      const link = item.link || "No link found";
-
-      if (title === feed.lastTitle) {
-        results.push(`📡 *Feed:* <${feed.url}>\n✅ *RSS Status:* All caught up! Latest post: <${link}|${title}>`);
-      } else {
-        feed.lastTitle = title;
-        saveFeeds(feeds);
-        results.push(`📡 *Feed:* <${feed.url}>\n📰 *New RSS Update:* <${link}|${title}>`);
-      }
-    } catch (err) {
-      console.log(err);
-      results.push(`❌ Failed to fetch RSS feed: <${feed.url}>`);
+    let removeIndex = -1;
+    const num = parseInt(target, 10);
+    if (!isNaN(num) && num >= 1 && num <= feeds.length) {
+      removeIndex = num - 1;
+    } else {
+      removeIndex = feeds.findIndex((f) => f.url.toLowerCase() === target.toLowerCase());
     }
+
+    if (removeIndex === -1) {
+      await respond({ text: `⚠️ Couldn't find feed "${target}". Use \`/fiyan-rss list\` to see valid numbers!` });
+      return;
+    }
+
+    const removed = feeds.splice(removeIndex, 1)[0];
+    saveFeeds(feeds);
+    await respond({ text: `🗑️ Removed feed: *${removed.title || removed.url}*` });
+    return;
   }
 
-  await respond({ text: results.join("\n\n") });
+  // 3. Manual check / refresh
+  if (action === "check" || action === "refresh") {
+    if (feeds.length === 0) {
+      await respond({ text: "📰 No RSS feeds to check. Add one with `/fiyan-rss <url>`." });
+      return;
+    }
+
+    const results = [];
+    for (const feed of feeds) {
+      try {
+        const data = await parser.parseURL(feed.url);
+        if (!data.items || data.items.length === 0) {
+          results.push(`📡 *${feed.title || feed.url}*\nNo posts found.`);
+          continue;
+        }
+
+        const item = data.items[0];
+        const title = item.title || "Untitled";
+        const link = item.link || "No link found";
+
+        if (title === feed.lastTitle) {
+          results.push(`📡 *${feed.title || feed.url}*\n✅ All caught up! Latest: <${link}|${title}>`);
+        } else {
+          feed.lastTitle = title;
+          saveFeeds(feeds);
+          results.push(`📡 *${feed.title || feed.url}*\n📰 *New Post:* <${link}|${title}>`);
+        }
+      } catch (err) {
+        console.error(`Manual check error for ${feed.url}:`, err.message || err);
+        results.push(`❌ Failed to check *${feed.title || feed.url}*`);
+      }
+    }
+
+    await respond({ text: results.join("\n\n") });
+    return;
+  }
+
+  // 4. Add feed (URL or preset)
+  let feedUrl = presets[action] || "";
+  if (!feedUrl) {
+    const matchUrl = rawInput.match(/https?:\/\/[^\s>|]+/i);
+    feedUrl = matchUrl ? matchUrl[0] : "";
+  }
+
+  if (!feedUrl) {
+    const num = parseInt(rawInput, 10);
+    if (!isNaN(num) && num >= 1 && num <= feeds.length) {
+      const removed = feeds.splice(num - 1, 1)[0];
+      saveFeeds(feeds);
+      await respond({ text: `🗑️ Removed feed: *${removed.title || removed.url}*` });
+      return;
+    }
+
+    await respond({
+      text: "⚠️ Please provide a valid RSS URL or preset.\n\n*Usage:*\n• `/fiyan-rss` - View watched feeds\n• `/fiyan-rss <url>` - Add a feed\n• `/fiyan-rss remove <number>` - Remove a feed\n• `/fiyan-rss check` - Check feeds now\n• `/fiyan-rss hackernews` - Quick-add Hacker News"
+    });
+    return;
+  }
+
+  const existing = feeds.find((f) => f.url.toLowerCase() === feedUrl.toLowerCase());
+  if (existing) {
+    await respond({
+      text: `⚠️ You are already watching *${existing.title || existing.url}*! Use \`/fiyan-rss remove <number>\` if you want to remove it.`
+    });
+    return;
+  }
+
+  try {
+    const data = await parser.parseURL(feedUrl);
+    const feedTitle = data.title || feedUrl;
+    const latestItem = data.items && data.items.length > 0 ? data.items[0] : null;
+    const latestTitle = latestItem?.title || "";
+    const latestLink = latestItem?.link || "";
+
+    const feed = {
+      url: feedUrl,
+      title: feedTitle,
+      lastTitle: latestTitle,
+      channelId: command.channel_id || ""
+    };
+
+    feeds.push(feed);
+    saveFeeds(feeds);
+
+    if (latestItem) {
+      await respond({
+        text: `📰 *Added RSS Feed:* *${feedTitle}*\n*Latest Post:* <${latestLink}|${latestTitle}>`
+      });
+    } else {
+      await respond({
+        text: `📰 *Added RSS Feed:* *${feedTitle}*\nNo posts found in this feed yet.`
+      });
+    }
+  } catch (err) {
+    console.error(`Add feed error for ${feedUrl}:`, err.message || err);
+    await respond({
+      text: `❌ Couldn't parse <${feedUrl}> as an RSS feed. Make sure the URL points to a valid XML/RSS feed!`
+    });
+  }
 });
+
 
 (async () => {
   await app.start();
