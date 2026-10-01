@@ -64,7 +64,7 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: "*🤖 Available Commands:*\n🏓 `/fiyan-ping` - Test bot latency\n🐱 `/fiyan-catfact` - Get a random cat fact\n📢 `/fiyan-echo` - Echo a message\n📖 `/fiyan-fakeword` - Get a fake word\n😂 `/fiyan-joke` - Tell a random joke\n💡 `/fiyan-advice` - Get random advice\n🪙 `/fiyan-coin` - Flip a coin\n🎲 `/fiyan-dice` - Roll a dice\n🧠 `/fiyan-uselessfact` - Get a useless fact\n📰 `/fiyan-rss` - Check, add, or remove RSS feeds"
+    text: "*🤖 Available Commands:*\n🏓 `/fiyan-ping` - Test bot latency\n🐱 `/fiyan-catfact` - Get a random cat fact\n📢 `/fiyan-echo` - Echo a message\n📖 `/fiyan-fakeword` - Get a fake word\n😂 `/fiyan-joke` - Tell a random joke\n💡 `/fiyan-advice` - Get random advice\n🪙 `/fiyan-coin` - Flip a coin\n🎲 `/fiyan-dice` - Roll a dice\n🧠 `/fiyan-uselessfact` - Get a useless fact\n🐸 `/fiyan-meme` - Get a random meme\n📰 `/fiyan-rss` - Check, add, or remove RSS feeds"
   });
 });
 
@@ -166,6 +166,25 @@ app.command("/fiyan-uselessfact", async ({ ack, respond }) => {
   } catch (err) {
     console.log(err);
     await respond({ text: "❌ Failed to fetch a useless fact." });
+  }
+});
+
+
+app.command("/fiyan-meme", async ({ ack, respond }) => {
+  await ack();
+  try {
+    const response = await axios.get("https://meme-api.com/gimme");
+    const data = response.data;
+    if (data.nsfw) {
+      await respond({ text: "🐸 Couldn't find a safe meme right now, try again!" });
+      return;
+    }
+    await respond({
+      text: `🐸 *${data.title}* _(r/${data.subreddit})_\n${data.url}`
+    });
+  } catch (err) {
+    console.log(err);
+    await respond({ text: "❌ Failed to fetch a meme." });
   }
 });
 
