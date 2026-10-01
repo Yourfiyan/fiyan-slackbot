@@ -40,7 +40,7 @@ const checkFeeds = async () => {
         if (targetChannel) {
           await app.client.chat.postMessage({
             channel: targetChannel,
-            text: `*New RSS Update:*\n*Feed:* <${feed.url}>\n*Latest Post:* <${link}|${title}>`
+            text: `📢 *New RSS Update:*\n📡 *Feed:* <${feed.url}>\n📰 *Latest Post:* <${link}|${title}>`
           });
         }
       }
@@ -58,13 +58,13 @@ app.command("/fiyan-ping", async ({ ack, respond }) => {
   const start = Date.now();
   await ack();
   const latency = Date.now() - start;
-  await respond({ text: `Pong!\nLatency: ${latency}ms` });
+  await respond({ text: `🏓 *Pong!*\n⏱️ Latency: ${latency}ms` });
 });
 
 app.command("/fiyan-help", async ({ ack, respond }) => {
   await ack();
   await respond({
-    text: "*Available Commands:*\n`/fiyan-ping` - Test bot latency\n`/fiyan-catfact` - Get a random cat fact\n`/fiyan-echo` - Echo a message\n`/fiyan-fakeword` - Get a fake word\n`/fiyan-joke` - Tell a random joke\n`/fiyan-advice` - Get random advice\n`/fiyan-coin` - Flip a coin\n`/fiyan-dice` - Roll a dice\n`/fiyan-uselessfact` - Get a useless fact\n`/fiyan-rss` - Check, add, or remove RSS feeds"
+    text: "*🤖 Available Commands:*\n🏓 `/fiyan-ping` - Test bot latency\n🐱 `/fiyan-catfact` - Get a random cat fact\n📢 `/fiyan-echo` - Echo a message\n📖 `/fiyan-fakeword` - Get a fake word\n😂 `/fiyan-joke` - Tell a random joke\n💡 `/fiyan-advice` - Get random advice\n🪙 `/fiyan-coin` - Flip a coin\n🎲 `/fiyan-dice` - Roll a dice\n🧠 `/fiyan-uselessfact` - Get a useless fact\n📰 `/fiyan-rss` - Check, add, or remove RSS feeds"
   });
 });
 
@@ -73,10 +73,10 @@ app.command("/fiyan-catfact", async ({ ack, respond }) => {
   await ack();
   try {
     const response = await axios.get("https://catfact.ninja/fact");
-    await respond({ text: `*Cat Fact:*\n${response.data.fact}` });
+    await respond({ text: `🐱 *Cat Fact:*\n${response.data.fact}` });
   } catch (err) {
     console.log(err);
-    await respond({ text: "Failed to fetch a cat fact." });
+    await respond({ text: "❌ Failed to fetch a cat fact." });
   }
 });
 
@@ -86,12 +86,12 @@ app.command("/fiyan-echo", async ({ ack, respond, command }) => {
   const text = command.text?.trim();
   if (!text) {
     await respond({
-      text: "Usage: `/fiyan-echo [text]`"
+      text: "⚠️ Usage: `/fiyan-echo [text]`"
     });
     return;
   }
   await respond({
-    text: text
+    text: `📢 ${text}`
   });
 });
 
@@ -103,11 +103,11 @@ app.command("/fiyan-fakeword", async ({ ack, respond }) => {
     const exampleBlock = data.example ? `\n*Example:* _"${data.example}"_` : "";
 
     await respond({
-      text: `*Fake Word:* *${data.word}*\n*Part of Speech:* _${data.pos}_\n*Meaning:* ${data.definition}${exampleBlock}`
+      text: `📖 *Fake Word:* *${data.word}*\n*Part of Speech:* _${data.pos}_\n*Meaning:* ${data.definition}${exampleBlock}`
     });
   } catch (err) {
     console.log(err);
-    await respond({ text: "Failed to fetch a fake word." });
+    await respond({ text: "❌ Failed to fetch a fake word." });
   }
 });
 
@@ -116,11 +116,11 @@ app.command("/fiyan-joke", async ({ ack, respond }) => {
   try {
     const response = await axios.get("https://official-joke-api.appspot.com/random_joke");
     await respond({
-      text: `*Joke:*\n${response.data.setup}\n_${response.data.punchline}_`
+      text: `😂 *Joke:*\n${response.data.setup}\n_${response.data.punchline}_`
     });
   } catch (err) {
     console.log(err);
-    await respond({ text: "Failed to fetch a joke." });
+    await respond({ text: "❌ Failed to fetch a joke." });
   }
 });
 
@@ -130,10 +130,10 @@ app.command("/fiyan-advice", async ({ ack, respond }) => {
   try {
     const response = await axios.get("https://api.adviceslip.com/advice");
     const advice = response.data?.slip?.advice || "No advice found.";
-    await respond({ text: `*Advice:*\n"${advice}"` });
+    await respond({ text: `💡 *Advice:*\n"${advice}"` });
   } catch (err) {
     console.log(err);
-    await respond({ text: "Failed to fetch advice." });
+    await respond({ text: "❌ Failed to fetch advice." });
   }
 });
 
@@ -141,7 +141,7 @@ app.command("/fiyan-advice", async ({ ack, respond }) => {
 app.command("/fiyan-coin", async ({ ack, respond }) => {
   await ack();
   const result = Math.random() < 0.5 ? "Heads" : "Tails";
-  await respond({ text: `*Coin Flip:* *${result}*` });
+  await respond({ text: `🪙 *Coin Flip:* *${result}*` });
 });
 
 
@@ -153,7 +153,7 @@ app.command("/fiyan-dice", async ({ ack, respond, command }) => {
     sides = 6;
   }
   const roll = Math.floor(Math.random() * sides) + 1;
-  await respond({ text: `*Dice Roll (d${sides}):* *${roll}*` });
+  await respond({ text: `🎲 *Dice Roll (d${sides}):* *${roll}*` });
 });
 
 
@@ -162,10 +162,10 @@ app.command("/fiyan-uselessfact", async ({ ack, respond }) => {
   try {
     const response = await axios.get("https://uselessfacts.jsph.pl/api/v2/facts/random");
     const fact = response.data?.text || "No fact found.";
-    await respond({ text: `*Useless Fact:*\n${fact}` });
+    await respond({ text: `🧠 *Useless Fact:*\n${fact}` });
   } catch (err) {
     console.log(err);
-    await respond({ text: "Failed to fetch a useless fact." });
+    await respond({ text: "❌ Failed to fetch a useless fact." });
   }
 });
 
@@ -182,7 +182,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
 
   if (rawInput && !newLink) {
     await respond({
-      text: "Please provide a valid RSS URL.\nUsage: `/fiyan-rss [url]` to add or remove a feed, or `/fiyan-rss` to check status."
+      text: "⚠️ Please provide a valid RSS URL.\nUsage: `/fiyan-rss [url]` to add or remove a feed, or `/fiyan-rss` to check status."
     });
     return;
   }
@@ -193,7 +193,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       feeds.splice(existingIndex, 1);
       saveFeeds(feeds);
       await respond({
-        text: `Removed RSS feed: <${newLink}>`
+        text: `🗑️ Removed RSS feed: <${newLink}>`
       });
       return;
     }
@@ -210,7 +210,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       const data = await parser.parseURL(newLink);
       if (!data.items || data.items.length === 0) {
         await respond({
-          text: `Added RSS feed: <${newLink}>\nNo posts found in this feed yet.`
+          text: `📰 Added RSS feed: <${newLink}>\nNo posts found in this feed yet.`
         });
         return;
       }
@@ -222,12 +222,12 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       feed.lastTitle = title;
       saveFeeds(feeds);
       await respond({
-        text: `*Added RSS Feed:*\n*Latest Post:* <${link}|${title}>`
+        text: `📰 *Added RSS Feed:*\n*Latest Post:* <${link}|${title}>`
       });
     } catch (err) {
       console.log(err);
       await respond({
-        text: `Added <${newLink}>, but couldn't fetch latest post right now.`
+        text: `⚠️ Added <${newLink}>, but couldn't fetch latest post right now.`
       });
     }
     return;
@@ -235,7 +235,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
 
   if (feeds.length === 0) {
     await respond({
-      text: "*RSS Status:*\nNo RSS feeds are being watched. Use `/fiyan-rss [url]` to add one."
+      text: "📰 *RSS Status:*\nNo RSS feeds are being watched. Use `/fiyan-rss [url]` to add one."
     });
     return;
   }
@@ -250,7 +250,7 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
     try {
       const data = await parser.parseURL(feed.url);
       if (!data.items || data.items.length === 0) {
-        results.push(`*Feed:* <${feed.url}>\nNo posts found.`);
+        results.push(`📡 *Feed:* <${feed.url}>\nNo posts found.`);
         continue;
       }
 
@@ -259,15 +259,15 @@ app.command("/fiyan-rss", async ({ ack, respond, command }) => {
       const link = item.link || "No link found";
 
       if (title === feed.lastTitle) {
-        results.push(`*Feed:* <${feed.url}>\n*RSS Status:* All caught up! Latest post: <${link}|${title}>`);
+        results.push(`📡 *Feed:* <${feed.url}>\n✅ *RSS Status:* All caught up! Latest post: <${link}|${title}>`);
       } else {
         feed.lastTitle = title;
         saveFeeds(feeds);
-        results.push(`*Feed:* <${feed.url}>\n*New RSS Update:* <${link}|${title}>`);
+        results.push(`📡 *Feed:* <${feed.url}>\n📰 *New RSS Update:* <${link}|${title}>`);
       }
     } catch (err) {
       console.log(err);
-      results.push(`Failed to fetch RSS feed: <${feed.url}>`);
+      results.push(`❌ Failed to fetch RSS feed: <${feed.url}>`);
     }
   }
 
